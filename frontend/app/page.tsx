@@ -1,47 +1,84 @@
-
 "use client";
 
 import { useState } from "react";
 
+type Mode = "login" | "signup";
+
 export default function Home() {
+  const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
+    const isSignup = mode === "signup";
+    const endpoint = isSignup ? "signup" : "login";
+
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/auth/${endpoint}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            isSignup
+              ? { name: name.trim(), email: email.trim(), password }
+              : { email: email.trim(), password }
+          ),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(data.message || "Login failed.");
+        setMessage(data.message || (isSignup ? "Signup failed." : "Login failed."));
+        return;
+      }
+
+      if (isSignup) {
+        setMode("login");
+        setPassword("");
+        setMessage("Account created successfully! Please sign in.");
+        return;
+      }
+
+      if (!data.token || !data.user) {
+        setMessage("Login response is incomplete. Please check the backend.");
         return;
       }
 
       localStorage.setItem("hcm_token", data.token);
       localStorage.setItem("hcm_user", JSON.stringify(data.user));
       window.location.href = "/dashboard";
-    } catch {
-      setMessage("Backend connection failed. Check the backend terminal.");
+    } catch (error) {
+      console.error("Signup/Login request error:", error);
+
+      setMessage(
+        error instanceof Error
+          ? `Connection error: ${error.message}`
+          : "Unknown connection error."
+      );
     } finally {
       setLoading(false);
     }
   }
 
+  function changeMode(nextMode: Mode) {
+    setMode(nextMode);
+    setMessage("");
+    setPassword("");
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-5">
       <section className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <div className="mb-8 text-center">
+        <div className="mb-7 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 text-2xl font-bold text-white">
             H
           </div>
@@ -51,7 +88,60 @@ export default function Home() {
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <div className="mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => changeMode("login")}
+            className={`rounded-md py-2.5 font-semibold transition ${
+              mode === "login"
+                ? "bg-blue-600 text-white shadow"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => changeMode("signup")}
+            className={`rounded-md py-2.5 font-semibold transition ${
+              mode === "signup"
+                ? "bg-blue-600 text-white shadow"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        <h2 className="mb-1 text-xl font-bold text-slate-900">
+          {mode === "signup" ? "Create your account" : "Welcome back"}
+        </h2>
+        <p className="mb-6 text-sm text-slate-500">
+          {mode === "signup"
+            ? "Register to access the HCM Lite employee portal."
+            : "Sign in to access your account."}
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {mode === "signup" && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Full name
+              </label>
+              <input
+                type="text"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your full name"
+                className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Email address
@@ -59,9 +149,10 @@ export default function Home() {
             <input
               type="email"
               required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter Admin email"
+              placeholder="you@example.com"
               className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -73,24 +164,44 @@ export default function Home() {
             <input
               type="password"
               required
+              minLength={12}
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder={
+                mode === "signup"
+                  ? "At least 12 characters"
+                  : "Enter your password"
+              }
               className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
             />
+            {mode === "signup" && (
+              <p className="mt-1 text-xs text-slate-500">
+                Password must contain at least 12 characters.
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading
+              ? "Please wait..."
+              : mode === "signup"
+                ? "Create Account"
+                : "Sign In"}
           </button>
         </form>
 
         {message && (
-          <p className="mt-5 break-words rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
+          <p
+            role="status"
+            className="mt-5 break-words rounded-lg bg-slate-100 p-3 text-sm text-slate-700"
+          >
             {message}
           </p>
         )}

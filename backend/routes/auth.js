@@ -1,4 +1,3 @@
-
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -6,7 +5,6 @@ const User = require("../models/user");
 
 const router = express.Router();
 
-// Validate request body
 function validCredentials(body) {
   return (
     body &&
@@ -16,6 +14,67 @@ function validCredentials(body) {
     body.password.length > 0
   );
 }
+
+// Public signup: new accounts are Employee only
+router.post("/signup", async (req, res) => {
+  try {
+    const { name, email, password } = req.body || {};
+
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !name.trim() ||
+      !/^\S+@\S+\.\S+$/.test(email.trim()) ||
+      password.length < 12
+    ) {
+      return res.status(422).json({
+        message:
+          "Enter a valid name, email and password of at least 12 characters.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (await User.exists({ email: normalizedEmail })) {
+      return res.status(409).json({
+        message: "This email is already registered. Please sign in.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password: hashedPassword,
+      role: "Employee",
+      mustChangePassword: false,
+    });
+
+    return res.status(201).json({
+      message: "Account created successfully. You can now sign in.",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Signup error:", error.message);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "This email is already registered.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Could not create account.",
+    });
+  }
+});
 
 // One-time initial Admin setup
 router.post("/setup-admin", async (req, res) => {
@@ -41,7 +100,8 @@ router.post("/setup-admin", async (req, res) => {
       password.length < 12
     ) {
       return res.status(422).json({
-        message: "Enter a valid name, email and password of at least 12 characters.",
+        message:
+          "Enter a valid name, email and password of at least 12 characters.",
       });
     }
 
@@ -98,7 +158,8 @@ router.post("/login", async (req, res) => {
   try {
     if (!validCredentials(req.body)) {
       return res.status(400).json({
-        message: "Email and password are required. Send JSON with email and password fields.",
+        message:
+          "Email and password are required. Send JSON with email and password fields.",
       });
     }
 
@@ -116,13 +177,6 @@ router.post("/login", async (req, res) => {
     if (!user || !user.isActive) {
       return res.status(401).json({
         message: "Invalid email or password.",
-      });
-    }
-
-    if (!user.password) {
-      console.error("Login failed: password hash missing for account.");
-      return res.status(500).json({
-        message: "Account password is not configured. Reset the password.",
       });
     }
 
