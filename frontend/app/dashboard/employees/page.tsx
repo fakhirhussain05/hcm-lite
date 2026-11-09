@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API = "http://localhost:5000/api/employees";
+const API = "/api/employees";
 
 type Employee = {
   _id: string;
