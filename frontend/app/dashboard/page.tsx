@@ -17,7 +17,7 @@ type Stats = {
   monthlyPayroll: number;
 };
 
-const API = "http://localhost:5000";
+const API = "";
 
 export default function Dashboard() {
   const router = useRouter();
