@@ -2,61 +2,46 @@
 require("dotenv").config();
 
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const readline = require("readline");
 const User = require("./models/user");
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
 async function main() {
   try {
+    if (!process.env.MONGODB_URI) {
+      throw new Error("MONGODB_URI is missing from .env");
+    }
+
     await mongoose.connect(process.env.MONGODB_URI);
 
-    const email = "qazifakhir6@gmail.com";
+    console.log("MongoDB connected successfully!");
+    console.log("Database:", mongoose.connection.name);
 
-  const user = await User.findOne({ email }).select("+password");
+    const users = await User.find({})
+      .select("name email role isActive")
+      .lean();
 
-    if (!user || user.role !== "Admin") {
-      console.log("Admin account not found.");
+    if (users.length === 0) {
+      console.log("No users found in this database.");
       return;
     }
 
-    rl.question("Enter a NEW password (12+ characters): ", async (password) => {
-      try {
-        if (password.length < 12) {
-          console.log("Password must be at least 12 characters.");
-          return;
-        }
+    console.log("\nUsers found:", users.length);
 
-        const hash = await bcrypt.hash(password, 12);
+    for (const user of users) {
+      console.log({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      });
+    }
 
-        user.password = hash;
-await user.save();
+    const admins = users.filter((user) => user.role === "Admin");
 
-const savedUser = await User.findOne({ email }).select("+password");
-const verified = await bcrypt.compare(password, savedUser.password);
-console.log("Password hash verified:", verified);
-console.log("Stored password hash exists:", Boolean(savedUser.password));
-
-console.log(
-  verified
-    ? "Password saved and verified successfully!"
-    : "Password verification failed."
-);
-      } catch (error) {
-        console.log("Password reset failed:", error.message);
-      } finally {
-        rl.close();
-        await mongoose.disconnect();
-      }
-    });
+    console.log("\nAdmin accounts found:", admins.length);
   } catch (error) {
-    console.log("Error:", error.message);
-    rl.close();
-    await mongoose.disconnect();
+    console.error("Error:", error.message);
+  } finally {
+    await mongoose.disconnect().catch(() => {});
   }
 }
 
