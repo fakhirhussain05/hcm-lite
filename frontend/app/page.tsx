@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,8 +7,8 @@ type Mode = "login" | "signup";
 export default function Home() {
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("qazifakhir6@gmail.com");
+  const [password, setPassword] = useState("fakhir052002@");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +34,7 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(data.message || (isSignup ? "Signup failed." : "Login failed."));
+        setMessage(data.message || "Login failed.");
         return;
       }
 
@@ -47,7 +46,7 @@ export default function Home() {
       }
 
       if (!data.token || !data.user) {
-        setMessage("Login response is incomplete. Please check the backend.");
+        setMessage("Login response is incomplete.");
         return;
       }
 
@@ -55,7 +54,6 @@ export default function Home() {
       localStorage.setItem("hcm_user", JSON.stringify(data.user));
       window.location.href = "/dashboard";
     } catch (error) {
-      console.error("Signup/Login request error:", error);
       setMessage(
         error instanceof Error
           ? `Connection error: ${error.message}`
@@ -162,23 +160,12 @@ export default function Home() {
               type="password"
               required
               minLength={12}
-              autoComplete={
-                mode === "signup" ? "new-password" : "current-password"
-              }
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={
-                mode === "signup"
-                  ? "At least 12 characters"
-                  : "Enter your password"
-              }
+              placeholder="Enter your password"
               className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
             />
-            {mode === "signup" && (
-              <p className="mt-1 text-xs text-slate-500">
-                Password must contain at least 12 characters.
-              </p>
-            )}
           </div>
 
           <button
@@ -210,3 +197,4 @@ export default function Home() {
     </main>
   );
 }
+```
