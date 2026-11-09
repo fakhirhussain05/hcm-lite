@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -21,18 +22,15 @@ export default function Home() {
     const endpoint = isSignup ? "signup" : "login";
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/auth/${endpoint}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            isSignup
-              ? { name: name.trim(), email: email.trim(), password }
-              : { email: email.trim(), password }
-          ),
-        }
-      );
+      const response = await fetch(`/api/auth/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          isSignup
+            ? { name: name.trim(), email: email.trim(), password }
+            : { email: email.trim(), password }
+        ),
+      });
 
       const data = await response.json();
 
@@ -58,7 +56,6 @@ export default function Home() {
       window.location.href = "/dashboard";
     } catch (error) {
       console.error("Signup/Login request error:", error);
-
       setMessage(
         error instanceof Error
           ? `Connection error: ${error.message}`
